@@ -1,0 +1,20 @@
+# AraVoice .gitignore
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+
+# Data files (keep locally, don't push to repo)
+agent_memory.json
+chroma_db/
+
+# macOS
+.DS_Store
+
+# Backups
+*.zip

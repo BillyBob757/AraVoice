@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a0f">
+    <title>Ara</title>
+    <link rel="apple-touch-icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230a0a0f' width='100' height='100'/><text y='65' x='50' text-anchor='middle' font-size='50' fill='%23a855f7'>A</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #0a0a0f 0%, #12121a 100%);
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+            max-width: 400px;
+            padding: 40px 20px;
+            padding-bottom: 60px;
+            /* Space for transcript toggle */
+            position: relative;
+            z-index: 10;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 300;
+            letter-spacing: 0.2em;
+            color: #a855f7;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .status {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 60px;
+            height: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .status.active {
+            color: #a855f7;
+        }
+
+        .button-container {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin-bottom: 60px;
+        }
+
+        .pulse-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid rgba(168, 85, 247, 0.3);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .recording .pulse-ring {
+            animation: pulse 1.5s ease-out infinite;
+        }
+
+        .speaking .pulse-ring {
+            animation: breathe 2s ease-in-out infinite;
+            border-color: rgba(168, 85, 247, 0.5);
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.6;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        @keyframes breathe {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.3;
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.15);
+                opacity: 0.5;
+            }
+        }
+
+        .talk-button {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(145deg, #1a1a24, #0f0f16);
+            box-shadow:
+                0 10px 40px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .talk-button:active,
+        .talk-button.active {
+            transform: scale(0.95);
+            box-shadow:
+                0 5px 20px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .recording .talk-button {
+            background: linear-gradient(145deg, #2a1a34, #1a0f24);
+            box-shadow:
+                0 0 60px rgba(168, 85, 247, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .speaking .talk-button {
+            background: linear-gradient(145deg, #1a1a24, #0f0f16);
+        }
+
+        .button-icon {
+            width: 50px;
+            height: 50px;
+            transition: all 0.3s ease;
+        }
+
+        .mic-icon {
+            fill: none;
+            stroke: #666;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .recording .mic-icon {
+            stroke: #a855f7;
+            filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.5));
+        }
+
+        .speaking .mic-icon {
+            stroke: #a855f7;
+            opacity: 0.6;
+        }
+
+        .wave-icon {
+            display: none;
+        }
+
+        .speaking .mic-icon {
+            display: none;
+        }
+
+        .speaking .wave-icon {
+            display: block;
+            stroke: #a855f7;
+            animation: wave-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes wave-pulse {
+
+            0%,
+            100% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: #444;
+            text-align: center;
+            transition: opacity 0.3s ease;
+        }
+
+        .recording .hint,
+        .speaking .hint,
+        .processing .hint {
+            opacity: 0;
+        }
+
+        /* Chat transcript panel */
+        .transcript-container {
+            position: fixed;
+            bottom: 60px;
+            /* Above text input */
+            left: 0;
+            right: 0;
+            max-height: calc(35vh - 60px);
+            z-index: 10;
+            background: rgba(10, 10, 15, 0.98);
+            border-top: 1px solid rgba(168, 85, 247, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transform: translateY(100%);
+            transition: transform 0.3s ease, bottom 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .transcript-container.visible {
+            transform: translateY(0);
+        }
+
+        /* When text input is visible, move transcript up */
+        .text-input-visible .transcript-container {
+            bottom: 60px;
+        }
+
+        .transcript-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .transcript-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #666;
+        }
+
+        .transcript-toggle {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+
+        .transcript-toggle:hover {
+            color: #a855f7;
+        }
+
+        .transcript {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            animation: messageIn 0.3s ease;
+        }
+
+        @keyframes messageIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: rgba(255, 255, 255, 0.08);
+            color: #bbb;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.ara {
+            align-self: flex-start;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(168, 85, 247, 0.08));
+            color: #d8b4fe;
+            border-bottom-left-radius: 4px;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+        }
+
+        .message-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+            opacity: 0.5;
+        }
+
+        /* Text input area */
+        .text-input-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px;
+            background: rgba(10, 10, 15, 1);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+        }
+
+        .text-input-container.visible {
+            transform: translateY(0);
+        }
+
+        .text-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 0.9rem;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .text-input:focus {
+            border-color: rgba(168, 85, 247, 0.5);
+        }
+
+        .text-input::placeholder {
+            color: #555;
+        }
+
+        .send-button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .send-button:hover {
+            transform: scale(1.02);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .upload-button {
+            padding: 10px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-button:hover {
+            background: rgba(168, 85, 247, 0.4);
+            transform: scale(1.05);
+        }
+
+        .toggle-text-btn {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #888;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            z-index: 20;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-text-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #a855f7;
+        }
+
+        /* Make transcript messages selectable */
+        .message {
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        /* Connection indicator */
+        .connection-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #333;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            transition: background 0.3s ease;
+        }
+
+        .connection-dot.connected {
+            background: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        }
+
+        .connection-dot.error {
+            background: #ef4444;
+        }
+
+        /* Disabled state */
+        .disabled .talk-button {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="connection-dot" id="connectionDot"></div>
+
+    <div class="container" id="app">
+        <h1 class="title">Ara</h1>
+        <div class="status" id="status">Tap to connect</div>
+
+        <div class="button-container" id="buttonContainer">
+            <div class="pulse-ring"></div>
+            <div class="pulse-ring" style="animation-delay: 0.5s"></div>
+            <button class="talk-button" id="talkButton">
+                <svg class="button-icon mic-icon" viewBox="0 0 24 24">
+                    <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                    <line x1="12" y1="19" x2="12" y2="23" />
+                    <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+                <svg class="button-icon wave-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M2 12h2" />
+                    <path d="M6 8v8" />
+                    <path d="M10 5v14" />
+                    <path d="M14 8v8" />
+                    <path d="M18 10v4" />
+                    <path d="M22 12h-2" />
+                </svg>
+            </button>
+        </div>
+
+        <p class="hint">Hold to talk</p>
+    </div>
+
+    <!-- Text input area (always visible) -->
+    <div class="text-input-container" id="textInputContainer">
+        <input type="file" id="fileInput" style="display: none;" accept="image/*,.txt,.pdf,.json,.md">
+        <button class="upload-button" id="uploadButton" title="Upload file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <path
+                    d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+            </svg>
+        </button>
+        <input type="text" class="text-input" id="textInput" placeholder="Type a message..." autocomplete="off">
+        <button class="send-button" id="sendButton">Send</button>
+    </div>
+
+    <div class="transcript-container" id="transcriptContainer">
+        <div class="transcript-header">
+            <span class="transcript-title">Conversation</span>
+            <button class="transcript-toggle" id="transcriptToggle">Hide</button>
+        </div>
+        <div class="transcript" id="transcript"></div>
+    </div>
+
+    <script>
+        // State
+        let socket = null;
+        let audioCtx = null;
+        let workletNode = null;
+        let mediaStream = null;
+        let isConnected = false;
+        let isRecording = false;
+        let isSpeaking = false;
+        let nextPlayTime = 0;
+
+        // Idle timeout (1 minute = 60000ms)
+        const IDLE_TIMEOUT_MS = 60000;
+        let idleTimer = null;
+        let idleCountdown = null;
+
+        // Elements
+        const app = document.getElementById('app');
+        const status = document.getElementById('status');
+        const talkButton = document.getElementById('talkButton');
+        const buttonContainer = document.getElementById('buttonContainer');
+        const connectionDot = document.getElementById('connectionDot');
+        const transcriptContainer = document.getElementById('transcriptContainer');
+        const transcript = document.getElementById('transcript');
+
+        // Audio Worklet for recording
+        const workletCode = `
+            class RecorderProcessor extends AudioWorkletProcessor {
+                process(inputs, outputs, parameters) {
+                    const input = inputs[0];
+                    if (input && input.length > 0) {
+                        this.port.postMessage(input[0]);
+                    }
+                    return true;
+                }
+            }
+            registerProcessor('recorder-processor', RecorderProcessor);
+        `;
+        const workletBlob = new Blob([workletCode], { type: 'application/javascript' });
+        const workletUrl = URL.createObjectURL(workletBlob);
+
+        // Connect to bridge
+        async function connect() {
+            if (isConnected) return;
+
+            updateStatus('Connecting...', false);
+
+            try {
+                socket = new WebSocket('ws://localhost:8765');
+
+                socket.onopen = async () => {
+                    // Connected to bridge, but waiting for xAI session
+                    connectionDot.classList.add('connected');
+                    updateStatus('Loading Ara...', true);
+                    await initAudio();
+                    // Note: isConnected stays false until session.updated received
+                };
+
+                socket.onmessage = handleMessage;
+
+                socket.onclose = () => {
+                    isConnected = false;
+                    connectionDot.classList.remove('connected');
+                    updateStatus('Disconnected', false);
+                    cleanup();
+                };
+
+                socket.onerror = () => {
+                    connectionDot.classList.add('error');
+                    updateStatus('Connection failed', false);
+                };
+
+            } catch (e) {
+                console.error('Connection error:', e);
+                updateStatus('Error: ' + e.message, false);
+            }
+        }
+
+        // Initialize audio
+        async function initAudio() {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+                nextPlayTime = audioCtx.currentTime;
+
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,
+                        sampleRate: 24000,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+
+                const source = audioCtx.createMediaStreamSource(mediaStream);
+                await audioCtx.audioWorklet.addModule(workletUrl);
+                workletNode = new AudioWorkletNode(audioCtx, 'recorder-processor');
+
+                workletNode.port.onmessage = (event) => {
+                    if (isRecording && socket && socket.readyState === WebSocket.OPEN) {
+                        const int16 = float32ToInt16(event.data);
+                        const base64 = arrayBufferToBase64(int16.buffer);
+                        socket.send(JSON.stringify({
+                            type: 'input_audio_buffer.append',
+                            audio: base64
+                        }));
+                    }
+                };
+
+                source.connect(workletNode);
+
+            } catch (e) {
+                console.error('Audio init error:', e);
+                updateStatus('Microphone access denied', false);
+            }
+        }
+
+        // Handle messages from xAI via bridge
+        function handleMessage(event) {
+            const data = JSON.parse(event.data);
+
+            switch (data.type) {
+                case 'response.audio.delta':
+                case 'response.output_audio.delta':
+                    if (!isSpeaking) {
+                        isSpeaking = true;
+                        lastSpeakingStart = Date.now();
+                        setState('speaking');
+                        updateStatus('Ara is speaking...', true);
+                    }
+                    playAudio(data.delta);
+                    break;
+
+                case 'response.audio.done':
+                case 'response.output_audio.done':
+                case 'response.done':
+                    setTimeout(() => {
+                        if (isSpeaking) {
+                            isSpeaking = false;
+                            setState('idle');
+                            updateStatus('Ready', false);
+                            resetIdleTimer(); // Reset idle timer after Ara speaks
+                        }
+                    }, 500);
+                    break;
+
+                case 'conversation.item.input_audio_transcription.completed':
+                    if (data.transcript) {
+                        addTranscript('user', data.transcript);
+                    }
+                    break;
+
+                case 'response.output_audio_transcript.done':
+                    if (data.transcript) {
+                        addTranscript('ara', data.transcript);
+                    }
+                    break;
+
+                case 'session.updated':
+                    // Session is ready - persona has been loaded
+                    console.log('[Session] Ready - persona loaded');
+                    isConnected = true;
+                    updateStatus('Ready', false);
+                    startIdleTimer();
+                    checkPendingMessage();
+                    break;
+            }
+        }
+
+        // Play audio
+        function playAudio(base64) {
+            if (!audioCtx) return;
+
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+
+            const int16 = new Int16Array(bytes.buffer);
+            const float32 = new Float32Array(int16.length);
+            for (let i = 0; i < int16.length; i++) {
+                float32[i] = int16[i] / 32768.0;
+            }
+
+            const buffer = audioCtx.createBuffer(1, float32.length, 24000);
+            buffer.copyToChannel(float32, 0);
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioCtx.destination);
+
+            if (nextPlayTime < audioCtx.currentTime) {
+                nextPlayTime = audioCtx.currentTime;
+            }
+            source.start(nextPlayTime);
+            nextPlayTime += buffer.duration;
+        }
+
+        // Start recording
+        function startRecording() {
+            // Force reset isSpeaking if stuck (backup recovery)
+            if (isSpeaking && Date.now() - lastSpeakingStart > 30000) {
+                console.log('[Recovery] Force resetting isSpeaking after 30s');
+                isSpeaking = false;
+                setState('idle');
+            }
+
+            if (!isConnected) {
+                console.log('[Recording] Not connected');
+                return;
+            }
+            if (isSpeaking) {
+                console.log('[Recording] Blocked - Ara is speaking');
+                return;
+            }
+
+            isRecording = true;
+            setState('recording');
+            updateStatus('Listening...', true);
+            resetIdleTimer(); // Reset idle timer on activity
+            console.log('[Recording] Started');
+
+            // Resume audio context if suspended (iOS Safari requirement)
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Track when speaking started for timeout recovery
+        let lastSpeakingStart = 0;
+
+        // Stop recording and commit
+        function stopRecording() {
+            if (!isRecording) return;
+
+            isRecording = false;
+            setState('processing');
+            updateStatus('Processing...', true);
+            resetIdleTimer(); // Reset idle timer on activity
+
+            // Commit the audio buffer - tell xAI we're done speaking
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+                socket.send(JSON.stringify({ type: 'response.create' }));
+            }
+        }
+
+        // UI state management
+        function setState(state) {
+            buttonContainer.classList.remove('recording', 'speaking', 'processing');
+            app.classList.remove('disabled');
+
+            if (state !== 'idle') {
+                buttonContainer.classList.add(state);
+            }
+
+            if (state === 'speaking' || state === 'processing') {
+                app.classList.add('disabled');
+            }
+        }
+
+        function updateStatus(text, active) {
+            status.textContent = text;
+            status.classList.toggle('active', active);
+        }
+
+        // Idle timeout management
+        function startIdleTimer() {
+            resetIdleTimer();
+        }
+
+        function resetIdleTimer() {
+            // Clear existing timers
+            if (idleTimer) clearTimeout(idleTimer);
+            if (idleCountdown) clearInterval(idleCountdown);
+
+            if (!isConnected) return;
+
+            let secondsLeft = Math.floor(IDLE_TIMEOUT_MS / 1000);
+
+            // Update status with countdown in the last 10 seconds
+            idleCountdown = setInterval(() => {
+                secondsLeft--;
+                if (secondsLeft <= 10 && secondsLeft > 0 && !isRecording && !isSpeaking) {
+                    updateStatus(`Idle - disconnecting in ${secondsLeft}s`, false);
+                }
+            }, 1000);
+
+            // Set disconnect timer
+            idleTimer = setTimeout(() => {
+                if (isConnected && !isRecording && !isSpeaking) {
+                    console.log('Idle timeout - disconnecting to save costs');
+                    updateStatus('Disconnected (idle)', false);
+                    if (socket) socket.close();
+                }
+            }, IDLE_TIMEOUT_MS);
+        }
+
+        function clearIdleTimer() {
+            if (idleTimer) clearTimeout(idleTimer);
+            if (idleCountdown) clearInterval(idleCountdown);
+            idleTimer = null;
+            idleCountdown = null;
+        }
+
+        function addTranscript(role, text) {
+            const message = document.createElement('div');
+            message.className = `message ${role}`;
+
+            const label = document.createElement('div');
+            label.className = 'message-label';
+            label.textContent = role === 'user' ? 'You' : 'Ara';
+
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            content.textContent = text;
+
+            message.appendChild(label);
+            message.appendChild(content);
+            transcript.appendChild(message);
+
+            transcriptContainer.classList.add('visible');
+            transcript.scrollTop = transcript.scrollHeight;
+        }
+
+        // Transcript toggle
+        document.getElementById('transcriptToggle').addEventListener('click', () => {
+            transcriptContainer.classList.toggle('visible');
+        });
+
+        // Text input elements
+        const textInputContainer = document.getElementById('textInputContainer');
+        const textInput = document.getElementById('textInput');
+        const sendButton = document.getElementById('sendButton');
+
+        // Send text message
+        let pendingTextMessage = null;
+
+        function sendTextMessage() {
+            const text = textInput.value.trim();
+            if (!text) return;
+
+            // If not connected, connect first and queue the message
+            if (!isConnected) {
+                pendingTextMessage = text;
+                textInput.value = '';
+                addTranscript('user', text);
+                connect();
+                return;
+            }
+
+            // Add to transcript
+            addTranscript('user', text);
+            textInput.value = '';
+            resetIdleTimer();
+
+            // Send text via xAI API
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                // Create conversation item with text
+                socket.send(JSON.stringify({
+                    type: 'conversation.item.create',
+                    item: {
+                        type: 'message',
+                        role: 'user',
+                        content: [{ type: 'input_text', text: text }]
+                    }
+                }));
+                // Request response
+                socket.send(JSON.stringify({ type: 'response.create' }));
+            }
+        }
+
+        // Check for pending text message after connection
+        function checkPendingMessage() {
+            if (pendingTextMessage && isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                const text = pendingTextMessage;
+                pendingTextMessage = null;
+                resetIdleTimer();
+                socket.send(JSON.stringify({
+                    type: 'conversation.item.create',
+                    item: {
+                        type: 'message',
+                        role: 'user',
+                        content: [{ type: 'input_text', text: text }]
+                    }
+                }));
+                socket.send(JSON.stringify({ type: 'response.create' }));
+            }
+        }
+
+        sendButton.addEventListener('click', sendTextMessage);
+        textInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendTextMessage();
+            }
+        });
+
+        // File upload handling
+        const uploadButton = document.getElementById('uploadButton');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Auto-connect if not connected
+            if (!isConnected) {
+                connect();
+                // Wait for connection
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+
+            try {
+                if (file.type.startsWith('image/')) {
+                    // Read image as base64 and create accessible data URL
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const dataUrl = reader.result; // Full data URL with base64
+                        addTranscript('user', `[Uploaded image: ${file.name}]`);
+
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            // Send image URL to xAI - put image first per xAI Vision docs
+                            socket.send(JSON.stringify({
+                                type: 'conversation.item.create',
+                                item: {
+                                    type: 'message',
+                                    role: 'user',
+                                    content: [
+                                        {
+                                            type: 'image_url',
+                                            image_url: {
+                                                url: dataUrl,
+                                                detail: 'high'
+                                            }
+                                        },
+                                        { type: 'input_text', text: `Please describe what you see in this image.` }
+                                    ]
+                                }
+                            }));
+                            socket.send(JSON.stringify({ type: 'response.create' }));
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    // Read text file
+                    const text = await file.text();
+                    const preview = text.substring(0, 500) + (text.length > 500 ? '...' : '');
+                    addTranscript('user', `[Uploaded file: ${file.name}]\n${preview}`);
+
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'conversation.item.create',
+                            item: {
+                                type: 'message',
+                                role: 'user',
+                                content: [{ type: 'input_text', text: `Here is the content of a file called "${file.name}":\n\n${text}\n\nPlease analyze this document.` }]
+                            }
+                        }));
+                        socket.send(JSON.stringify({ type: 'response.create' }));
+                    }
+                }
+                resetIdleTimer();
+            } catch (err) {
+                console.error('File upload error:', err);
+                addTranscript('user', `[Error uploading file: ${err.message}]`);
+            }
+
+            // Clear file input for next upload
+            fileInput.value = '';
+        });
+
+        // Cleanup
+        function cleanup() {
+            clearIdleTimer(); // Clear idle timer
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+            if (audioCtx) {
+                audioCtx.close();
+            }
+            socket = null;
+            audioCtx = null;
+            workletNode = null;
+            mediaStream = null;
+            isRecording = false;
+            isSpeaking = false;
+        }
+
+        // Helpers
+        function float32ToInt16(float32) {
+            const int16 = new Int16Array(float32.length);
+            for (let i = 0; i < float32.length; i++) {
+                const s = Math.max(-1, Math.min(1, float32[i]));
+                int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            return int16;
+        }
+
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+
+        // Event listeners
+        talkButton.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            if (!isConnected) {
+                connect();
+            } else {
+                startRecording();
+            }
+        });
+
+        talkButton.addEventListener('mouseup', () => stopRecording());
+        talkButton.addEventListener('mouseleave', () => stopRecording());
+
+        // Touch events for mobile
+        talkButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!isConnected) {
+                connect();
+            } else {
+                startRecording();
+            }
+        }, { passive: false });
+
+        talkButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopRecording();
+        }, { passive: false });
+
+        talkButton.addEventListener('touchcancel', () => stopRecording());
+
+        // Prevent context menu on long press
+        talkButton.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Initial state
+        updateStatus('Tap to connect', false);
+    </script>
+</body>
+
+</html>
