@@ -8,6 +8,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0a0a0f">
     <title>Ara</title>
+    <!-- PDF.js for PDF text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <link rel="apple-touch-icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230a0a0f' width='100' height='100'/><text y='65' x='50' text-anchor='middle' font-size='50' fill='%23a855f7'>A</text></svg>">
     <style>
@@ -517,6 +519,11 @@
     </div>
 
     <script>
+        // Configure PDF.js worker
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
         // State
         let socket = null;
         let audioCtx = null;
@@ -988,6 +995,42 @@
                             }
                         }));
                         socket.send(JSON.stringify({ type: 'response.create' }));
+                    }
+                } else if (file.type === 'application/pdf') {
+                    // Handle PDF files
+                    addTranscript('user', `[Processing PDF: ${file.name}]`);
+
+                    try {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        let fullText = '';
+
+                        // Extract text from all pages
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            const pageText = textContent.items.map(item => item.str).join(' ');
+                            fullText += `\n--- Page ${i} ---\n${pageText}`;
+                        }
+
+                        console.log(`[PDF] Extracted ${fullText.length} chars from ${pdf.numPages} pages`);
+                        const preview = fullText.substring(0, 500) + (fullText.length > 500 ? '...' : '');
+                        addTranscript('user', `[PDF extracted: ${pdf.numPages} pages]\n${preview}`);
+
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({
+                                type: 'conversation.item.create',
+                                item: {
+                                    type: 'message',
+                                    role: 'user',
+                                    content: [{ type: 'input_text', text: `Here is the content of a PDF called "${file.name}" (${pdf.numPages} pages):\n\n${fullText}\n\nPlease analyze this document.` }]
+                                }
+                            }));
+                            socket.send(JSON.stringify({ type: 'response.create' }));
+                        }
+                    } catch (pdfErr) {
+                        console.error('PDF extraction error:', pdfErr);
+                        addTranscript('user', `[Error reading PDF: ${pdfErr.message}]`);
                     }
                 } else {
                     // Read text file
