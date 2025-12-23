@@ -22,7 +22,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(180deg, #0a0a0f 0%, #12121a 100%);
+            background: linear-gradient(180deg, #0a0a0f 0%, #0d0d15 50%, #1a1025 100%);
             color: #fff;
             height: 100vh;
             display: flex;
@@ -30,6 +30,61 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            position: relative;
+        }
+
+        /* Star particles background */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                radial-gradient(2px 2px at 20px 30px, rgba(255, 255, 255, 0.3), transparent),
+                radial-gradient(2px 2px at 40px 70px, rgba(168, 85, 247, 0.2), transparent),
+                radial-gradient(1px 1px at 90px 40px, rgba(255, 255, 255, 0.2), transparent),
+                radial-gradient(2px 2px at 130px 80px, rgba(168, 85, 247, 0.15), transparent),
+                radial-gradient(1px 1px at 160px 120px, rgba(255, 255, 255, 0.25), transparent),
+                radial-gradient(2px 2px at 200px 50px, rgba(168, 85, 247, 0.2), transparent),
+                radial-gradient(1px 1px at 250px 90px, rgba(255, 255, 255, 0.15), transparent),
+                radial-gradient(2px 2px at 300px 150px, rgba(168, 85, 247, 0.2), transparent),
+                radial-gradient(1px 1px at 350px 30px, rgba(255, 255, 255, 0.2), transparent),
+                radial-gradient(2px 2px at 380px 100px, rgba(168, 85, 247, 0.15), transparent);
+            background-size: 400px 200px;
+            animation: twinkle 8s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Aurora glow from bottom */
+        body::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60%;
+            background: linear-gradient(0deg,
+                    rgba(168, 85, 247, 0.15) 0%,
+                    rgba(138, 43, 226, 0.08) 30%,
+                    rgba(75, 0, 130, 0.03) 60%,
+                    transparent 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        @keyframes twinkle {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
         }
 
         .container {
@@ -81,31 +136,35 @@
             color: #a855f7;
         }
 
-        /* Avatar section */
+        /* Avatar section - positioned top right */
         .avatar-container {
-            margin-bottom: 15px;
+            position: absolute;
+            top: 15px;
+            right: 20px;
             cursor: pointer;
-            position: relative;
+            z-index: 20;
         }
 
         .avatar {
-            width: 120px;
-            height: 120px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
-            border: 3px solid rgba(168, 85, 247, 0.5);
-            object-fit: cover;
-            background: linear-gradient(135deg, #1a1a2e 0%, #0a0a0f 100%);
+            border: 2px solid rgba(168, 85, 247, 0.5);
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 3rem;
-            color: #a855f7;
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #fff;
             transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
         }
 
         .avatar:hover {
             border-color: #a855f7;
-            transform: scale(1.05);
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.5);
         }
 
         .avatar img {
@@ -133,10 +192,10 @@
 
         .button-container {
             position: relative;
-            width: 100px;
-            height: 100px;
-            margin-top: 10px;
-            margin-bottom: 20px;
+            width: 140px;
+            height: 140px;
+            margin-top: 40px;
+            margin-bottom: 30px;
         }
 
         .pulse-ring {
@@ -191,37 +250,74 @@
             width: 100%;
             height: 100%;
             border-radius: 50%;
-            border: none;
+            border: 3px solid rgba(168, 85, 247, 0.5);
             background: linear-gradient(145deg, #1a1a24, #0f0f16);
             box-shadow:
-                0 10px 40px rgba(0, 0, 0, 0.5),
+                0 0 20px rgba(168, 85, 247, 0.2),
+                0 0 40px rgba(168, 85, 247, 0.1),
+                inset 0 0 30px rgba(168, 85, 247, 0.05),
                 inset 0 1px 0 rgba(255, 255, 255, 0.05);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+        }
+
+        .talk-button::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #a855f7, #7c3aed, #a855f7);
+            opacity: 0.3;
+            z-index: -1;
+            animation: glow-rotate 4s linear infinite;
+        }
+
+        @keyframes glow-rotate {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .talk-button:active,
         .talk-button.active {
             transform: scale(0.95);
             box-shadow:
-                0 5px 20px rgba(0, 0, 0, 0.5),
+                0 0 30px rgba(168, 85, 247, 0.4),
                 inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
 
         .recording .talk-button {
+            border-color: #a855f7;
             background: linear-gradient(145deg, #2a1a34, #1a0f24);
             box-shadow:
-                0 0 60px rgba(168, 85, 247, 0.3),
+                0 0 40px rgba(168, 85, 247, 0.5),
+                0 0 80px rgba(168, 85, 247, 0.3),
+                inset 0 0 30px rgba(168, 85, 247, 0.1),
                 inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .recording .talk-button::before {
+            opacity: 0.6;
         }
 
         .speaking .talk-button {
             background: linear-gradient(145deg, #1a1a24, #0f0f16);
+            box-shadow:
+                0 0 30px rgba(168, 85, 247, 0.3),
+                0 0 60px rgba(168, 85, 247, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
 
         .button-icon {
@@ -232,10 +328,11 @@
 
         .mic-icon {
             fill: none;
-            stroke: #666;
+            stroke: #a855f7;
             stroke-width: 2;
             stroke-linecap: round;
             stroke-linejoin: round;
+            filter: drop-shadow(0 0 5px rgba(168, 85, 247, 0.3));
         }
 
         .recording .mic-icon {
@@ -337,6 +434,38 @@
 
         .transcript-toggle:hover {
             color: #a855f7;
+        }
+
+        .end-button {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+            font-size: 0.75rem;
+            cursor: pointer;
+            padding: 4px 12px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .end-button:hover {
+            background: rgba(239, 68, 68, 0.3);
+            border-color: #ef4444;
+        }
+
+        .end-button .stop-icon {
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 1px;
+        }
+
+        .header-buttons {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .transcript {
@@ -575,14 +704,17 @@
                     d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
             </svg>
         </button>
-        <input type="text" class="text-input" id="textInput" placeholder="Type a message..." autocomplete="off">
+        <input type="text" class="text-input" id="textInput" placeholder="Ask Ara..." autocomplete="off">
         <button class="send-button" id="sendButton">Send</button>
     </div>
 
     <div class="transcript-container" id="transcriptContainer">
         <div class="transcript-header">
             <span class="transcript-title">Conversation</span>
-            <button class="transcript-toggle" id="transcriptToggle">Hide</button>
+            <div class="header-buttons">
+                <button class="end-button" id="endButton"><span class="stop-icon"></span>End</button>
+                <button class="transcript-toggle" id="transcriptToggle">Hide</button>
+            </div>
         </div>
         <div class="transcript" id="transcript"></div>
     </div>
@@ -1030,6 +1162,23 @@
         document.getElementById('transcriptToggle').addEventListener('click', () => {
             transcriptContainer.classList.toggle('visible');
         });
+
+        // End button - disconnect immediately
+        document.getElementById('endButton').addEventListener('click', () => {
+            disconnect();
+        });
+
+        // Disconnect function
+        function disconnect() {
+            console.log('[Session] Manual disconnect');
+            if (socket) {
+                socket.close();
+            }
+            cleanup();
+            isConnected = false;
+            connectionDot.classList.remove('connected');
+            updateStatus('Tap to connect', false);
+        }
 
         // Text input elements
         const textInputContainer = document.getElementById('textInputContainer');
