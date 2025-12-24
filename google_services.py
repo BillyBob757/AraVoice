@@ -26,8 +26,17 @@ SCOPES = [
     'https://www.googleapis.com/auth/calendar',
 ]
 
-CREDENTIALS_FILE = 'google_credentials.json'
-TOKEN_FILE = 'google_token.pickle'
+# Check Cloud Run secret mount paths first, then fall back to local files
+def _get_credentials_path():
+    cloud_path = '/secrets/credentials/google-credentials'
+    return cloud_path if os.path.exists(cloud_path) else 'google_credentials.json'
+
+def _get_token_path():
+    cloud_path = '/secrets/token/google-token'
+    return cloud_path if os.path.exists(cloud_path) else 'google_token.pickle'
+
+CREDENTIALS_FILE = _get_credentials_path()
+TOKEN_FILE = _get_token_path()
 
 
 class GoogleServices:
