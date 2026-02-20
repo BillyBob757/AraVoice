@@ -717,6 +717,75 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+
+        /* Data cards for Google service results */
+        .data-card-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .data-card-header {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #d8b4fe;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .data-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(168, 85, 247, 0.12);
+            border-radius: 10px;
+            padding: 10px 12px;
+            transition: border-color 0.2s ease;
+        }
+
+        .data-card:hover {
+            border-color: rgba(168, 85, 247, 0.3);
+        }
+
+        .data-card .card-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #e2d1f9;
+            margin-bottom: 3px;
+            line-height: 1.3;
+        }
+
+        .data-card .card-meta {
+            font-size: 0.72rem;
+            color: #888;
+            line-height: 1.4;
+        }
+
+        .data-card .card-meta span {
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .data-card .card-snippet {
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 4px;
+            line-height: 1.4;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .data-card .card-number {
+            font-size: 0.65rem;
+            color: #a855f7;
+            font-weight: 700;
+            margin-right: 6px;
+            min-width: 16px;
+        }
     </style>
 </head>
 
@@ -1026,11 +1095,20 @@
 
                 case 'google.emails.result':
                     if (data.emails && data.emails.length > 0) {
-                        let emailList = '📧 **Recent Emails:**\n\n';
+                        let html = '<div class="data-card-list">';
+                        html += '<div class="data-card-header">📧 Recent Emails</div>';
                         data.emails.forEach((e, i) => {
-                            emailList += `${i + 1}. **${e.subject || 'No subject'}**\n   From: ${e.from}\n   ${e.snippet?.substring(0, 100)}...\n\n`;
+                            const from = (e.from || 'Unknown').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            const subject = (e.subject || 'No subject').replace(/</g, '&lt;');
+                            const snippet = (e.snippet || '').substring(0, 120).replace(/</g, '&lt;');
+                            html += `<div class="data-card">
+                                <div class="card-title"><span class="card-number">${i + 1}</span>${subject}</div>
+                                <div class="card-meta"><span>From: ${from}</span></div>
+                                ${snippet ? `<div class="card-snippet">${snippet}</div>` : ''}
+                            </div>`;
                         });
-                        addTranscript('ara', emailList);
+                        html += '</div>';
+                        addTranscript('ara', html, true);
                     } else {
                         addTranscript('ara', '📧 No emails found');
                     }
@@ -1038,30 +1116,70 @@
 
                 case 'google.files.result':
                     if (data.files && data.files.length > 0) {
-                        let fileList = '📁 **Google Drive Files:**\n\n';
+                        let html = '<div class="data-card-list">';
+                        html += '<div class="data-card-header">📁 Google Drive Files</div>';
                         data.files.forEach((f, i) => {
-                            fileList += `${i + 1}. ${f.name}\n`;
+                            const name = (f.name || 'Untitled').replace(/</g, '&lt;');
+                            const type = (f.mimeType || '').split('.').pop() || 'file';
+                            html += `<div class="data-card">
+                                <div class="card-title"><span class="card-number">${i + 1}</span>${name}</div>
+                                <div class="card-meta"><span>${type}</span></div>
+                            </div>`;
                         });
-                        addTranscript('ara', fileList);
+                        html += '</div>';
+                        addTranscript('ara', html, true);
                     } else {
                         addTranscript('ara', '📁 No files found');
                     }
                     break;
 
                 case 'google.file.content.result':
-                    addTranscript('ara', `📄 **File Content:**\n\n${data.content?.substring(0, 2000)}${data.content?.length > 2000 ? '...(truncated)' : ''}`);
+                    {
+                        const content = (data.content || '').substring(0, 2000).replace(/</g, '&lt;').replace(/\n/g, '<br>');
+                        const truncated = (data.content?.length || 0) > 2000 ? '<div class="card-meta" style="margin-top:8px">...truncated</div>' : '';
+                        addTranscript('ara', `<div class="data-card-list">
+                            <div class="data-card-header">📄 File Content</div>
+                            <div class="data-card"><div class="card-snippet" style="-webkit-line-clamp:unset">${content}</div>${truncated}</div>
+                        </div>`, true);
+                    }
                     break;
 
                 case 'google.calendar.result':
                     if (data.events && data.events.length > 0) {
-                        let eventList = '📅 **Upcoming Events:**\n\n';
+                        let html = '<div class="data-card-list">';
+                        html += '<div class="data-card-header">📅 Upcoming Events</div>';
                         data.events.forEach((e, i) => {
-                            const start = e.start ? new Date(e.start).toLocaleString() : 'TBD';
-                            eventList += `${i + 1}. **${e.summary}**\n   ${start}\n   ${e.location || ''}\n\n`;
+                            const summary = (e.summary || 'Untitled').replace(/</g, '&lt;');
+                            const start = e.start ? new Date(e.start).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'TBD';
+                            const location = e.location ? `<span>📍 ${e.location.replace(/</g, '&lt;')}</span>` : '';
+                            html += `<div class="data-card">
+                                <div class="card-title"><span class="card-number">${i + 1}</span>${summary}</div>
+                                <div class="card-meta"><span>🕐 ${start}</span>${location}</div>
+                            </div>`;
                         });
-                        addTranscript('ara', eventList);
+                        html += '</div>';
+                        addTranscript('ara', html, true);
                     } else {
                         addTranscript('ara', '📅 No upcoming events');
+                    }
+                    break;
+
+                case 'google.contacts.result':
+                    if (data.contacts && data.contacts.length > 0) {
+                        let html = '<div class="data-card-list">';
+                        html += '<div class="data-card-header">👤 Contacts</div>';
+                        data.contacts.forEach((c, i) => {
+                            const name = (c.name || 'Unknown').replace(/</g, '&lt;');
+                            const email = c.email ? `<span>✉️ ${c.email.replace(/</g, '&lt;')}</span>` : '';
+                            const phone = c.phone ? `<span>📱 ${c.phone}</span>` : '';
+                            const org = c.organization ? `<span>🏢 ${c.organization.replace(/</g, '&lt;')}</span>` : '';
+                            html += `<div class="data-card">
+                                <div class="card-title"><span class="card-number">${i + 1}</span>${name}</div>
+                                <div class="card-meta">${email}${phone}${org}</div>
+                            </div>`;
+                        });
+                        html += '</div>';
+                        addTranscript('ara', html, true);
                     }
                     break;
 
@@ -1208,7 +1326,7 @@
             idleCountdown = null;
         }
 
-        function addTranscript(role, text) {
+        function addTranscript(role, text, isHTML = false) {
             const message = document.createElement('div');
             message.className = `message ${role}`;
 
@@ -1218,7 +1336,11 @@
 
             const content = document.createElement('div');
             content.className = 'message-content';
-            content.textContent = text;
+            if (isHTML) {
+                content.innerHTML = text;
+            } else {
+                content.textContent = text;
+            }
 
             message.appendChild(label);
             message.appendChild(content);
