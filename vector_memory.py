@@ -58,7 +58,7 @@ class VectorMemory:
         )
     
     def index_all_memories(self):
-        """Index all memories from the JSON file into ChromaDB."""
+        """Index all memories from the JSON file into ChromaDB (fast batch mode)."""
         if not os.path.exists(MEMORY_FILE):
             print("[VectorMemory] No memory file found")
             return 0
@@ -66,22 +66,53 @@ class VectorMemory:
         with open(MEMORY_FILE, "r") as f:
             history = json.load(f)
         
-        added = 0
+        if not history:
+            print("[VectorMemory] Memory file is empty")
+            return 0
+        
+        # Clear existing collection and re-add everything (faster than per-entry duplicate check)
+        try:
+            self._client.delete_collection("ara_memories")
+            self._collection = self._client.get_or_create_collection(
+                name="ara_memories",
+                metadata={"description": "Ara's conversation memories"}
+            )
+        except Exception as e:
+            print(f"[VectorMemory] Error resetting collection: {e}")
+        
+        # Prepare all entries
+        documents = []
+        metadatas = []
+        ids = []
+        
         for entry in history:
             role = entry.get("role", "user")
             text = entry.get("text", "")
             if text and text.strip():
                 memory_id = self._generate_id(text, role)
-                existing = self._collection.get(ids=[memory_id])
-                if not existing or not existing['ids']:
-                    self._collection.add(
-                        documents=[text],
-                        metadatas=[{"role": role}],
-                        ids=[memory_id]
-                    )
-                    added += 1
+                if memory_id not in ids:  # Avoid duplicates in batch
+                    documents.append(text)
+                    metadatas.append({"role": role})
+                    ids.append(memory_id)
         
-        print(f"[VectorMemory] Indexed {added} new memories (total: {self._collection.count()})")
+        # Batch add in chunks of 100
+        added = 0
+        batch_size = 100
+        for i in range(0, len(documents), batch_size):
+            batch_docs = documents[i:i+batch_size]
+            batch_meta = metadatas[i:i+batch_size]
+            batch_ids = ids[i:i+batch_size]
+            try:
+                self._collection.add(
+                    documents=batch_docs,
+                    metadatas=batch_meta,
+                    ids=batch_ids
+                )
+                added += len(batch_docs)
+            except Exception as e:
+                print(f"[VectorMemory] Batch add error at {i}: {e}")
+        
+        print(f"[VectorMemory] Indexed {added} memories (total: {self._collection.count()})")
         return added
     
     def search(self, query: str, n_results: int = 10) -> List[Tuple[str, str]]:

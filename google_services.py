@@ -501,6 +501,29 @@ class GoogleServices:
             except Exception as e:
                 return f"Error reading PDF: {str(e)}"
         
+        # Image files - return as base64 data URL for vision API processing
+        if mime_type.startswith('image/'):
+            try:
+                import base64
+                
+                request = self.drive.files().get_media(fileId=file_id)
+                fh = io.BytesIO()
+                downloader = MediaIoBaseDownload(fh, request)
+                done = False
+                while not done:
+                    status, done = downloader.next_chunk()
+                
+                fh.seek(0)
+                image_bytes = fh.read()
+                b64_data = base64.b64encode(image_bytes).decode('utf-8')
+                data_url = f"data:{mime_type};base64,{b64_data}"
+                
+                print(f"[GoogleServices] Downloaded image {file_name} ({len(image_bytes)} bytes)")
+                # Return with special prefix so bridge.py knows to use vision API
+                return f"__IMAGE_DATA_URL__{data_url}"
+            except Exception as e:
+                return f"Error downloading image: {str(e)}"
+        
         return f"Cannot read content of file type: {mime_type}"
     
     # ============ GOOGLE SHEETS METHODS ============

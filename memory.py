@@ -1,6 +1,10 @@
 import json
 import os
 import logging
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+EASTERN = ZoneInfo("America/New_York")
 
 logger = logging.getLogger("voice-agent")
 
@@ -48,7 +52,7 @@ class MemoryManager:
         if not history:
             return ""
         
-        recent = history[-500:]  # Keep last 500 turns for long-term memory
+        recent = history[-200:]  # Keep last 200 turns for direct context
         memory_str = "\n[Previous Conversation Memory]:\n"
         for turn in recent:
             memory_str += f"{turn['role']}: {turn['text']}\n"
@@ -56,9 +60,44 @@ class MemoryManager:
         return memory_str
 
     @staticmethod
+    def get_last_interaction_time() -> str:
+        """Get the timestamp of the last user turn from memory.
+        Returns ISO format string or None if no history."""
+        history = []
+        
+        if GCS_BUCKET:
+            try:
+                client = get_gcs_client()
+                if client:
+                    bucket = client.bucket(GCS_BUCKET)
+                    blob = bucket.blob(MEMORY_FILE)
+                    if blob.exists():
+                        content = blob.download_as_string()
+                        history = json.loads(content)
+            except Exception as e:
+                logger.error(f"Failed to read from GCS: {e}")
+        else:
+            if os.path.exists(MEMORY_FILE):
+                try:
+                    with open(MEMORY_FILE, "r") as f:
+                        history = json.load(f)
+                except:
+                    pass
+        
+        if not history:
+            return None
+        
+        # Search backwards for the last entry with a timestamp
+        for entry in reversed(history):
+            if 'timestamp' in entry:
+                return entry['timestamp']
+        
+        return None
+
+    @staticmethod
     def save_turn(role: str, text: str):
         """Appends a single turn to the memory file."""
-        entry = {"role": role, "text": text}
+        entry = {"role": role, "text": text, "timestamp": datetime.now(EASTERN).isoformat()}
         history = []
         
         if GCS_BUCKET:

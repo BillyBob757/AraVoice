@@ -1,6 +1,8 @@
+# GCloud source upload ignore
 venv/
 __pycache__/
 *.pyc
+*.pyo
 .env
 .git/
 .gitignore
@@ -10,3 +12,9 @@ google_token.pickle
 google_credentials.json
 *.md
 ara.html
+.DS_Store
+agent_memory_backup.json
+sw.js
+manifest.json
+index.html
+inspect_session.py

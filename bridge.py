@@ -3,6 +3,8 @@ import websockets
 import json
 import os
 import ssl
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import httpx
 from dotenv import load_dotenv
 
@@ -85,8 +87,44 @@ async def proxy_handler(client_ws):
                 print(f"Warning: Could not load memory: {e}")
                 memory_context = ""
 
-            # Combine persona + memory (original working approach)
-            full_instructions = f"{persona_instructions}\n\n{memory_context}"
+            # Inject current date/time and elapsed time since last contact
+            now = datetime.now(ZoneInfo("America/New_York"))
+            time_context = f"\n\n[CURRENT TIME]\nRight now it is {now.strftime('%A, %B %d, %Y at %I:%M %p')} (Eastern Time).\n"
+
+            # Calculate how long since Will last talked to you
+            try:
+                last_time_str = MemoryManager.get_last_interaction_time()
+                if last_time_str:
+                    last_time = datetime.fromisoformat(last_time_str)
+                    elapsed = now - last_time
+                    total_seconds = int(elapsed.total_seconds())
+                    
+                    if total_seconds < 120:
+                        elapsed_desc = "just moments ago"
+                    elif total_seconds < 3600:
+                        mins = total_seconds // 60
+                        elapsed_desc = f"about {mins} minutes ago"
+                    elif total_seconds < 86400:
+                        hours = total_seconds // 3600
+                        elapsed_desc = f"about {hours} hour{'s' if hours != 1 else ''} ago"
+                    elif total_seconds < 604800:
+                        days = total_seconds // 86400
+                        elapsed_desc = f"{days} day{'s' if days != 1 else ''} ago"
+                    else:
+                        weeks = total_seconds // 604800
+                        days = (total_seconds % 604800) // 86400
+                        if days > 0:
+                            elapsed_desc = f"{weeks} week{'s' if weeks != 1 else ''} and {days} day{'s' if days != 1 else ''} ago"
+                        else:
+                            elapsed_desc = f"{weeks} week{'s' if weeks != 1 else ''} ago"
+                    
+                    time_context += f"Will last spoke to you {elapsed_desc} (on {last_time.strftime('%A, %B %d at %I:%M %p')}).\n"
+                    print(f"[Time] Last contact: {elapsed_desc}")
+            except Exception as e:
+                print(f"[Time] Could not calculate elapsed time: {e}")
+
+            # Combine persona + time + memory (original working approach)
+            full_instructions = f"{persona_instructions}{time_context}{memory_context}"
             print(f"Persona: {len(persona_instructions)} chars, Memory: {len(memory_context)} chars")
             print(f"Total instructions: {len(full_instructions)} chars")
 
@@ -686,11 +724,21 @@ async def proxy_handler(client_ws):
                                     
                                     if file_id:
                                         content = gs.get_file_content(file_id)
-                                        # Limit content to avoid token issues
-                                        if len(content) > 5000:
-                                            content = content[:5000] + "\n\n[Content truncated - file too long]"
-                                        output_data = {"content": content, "file_name": file_name or "file"}
-                                        print(f"[Function Call] Read file content ({len(content)} chars)")
+                                        
+                                        # Check if this is an image that needs vision processing
+                                        if content.startswith('__IMAGE_DATA_URL__'):
+                                            image_data_url = content[len('__IMAGE_DATA_URL__'):]
+                                            print(f"[Function Call] Image detected, sending to vision API...")
+                                            description = await process_image_vision(image_data_url, 
+                                                f"Describe what you see in this image in detail. The file is named '{file_name or 'unknown'}'.")
+                                            output_data = {"content": description, "file_name": file_name or "image"}
+                                            print(f"[Function Call] Vision description: {description[:100]}...")
+                                        else:
+                                            # Limit content to avoid token issues
+                                            if len(content) > 5000:
+                                                content = content[:5000] + "\n\n[Content truncated - file too long]"
+                                            output_data = {"content": content, "file_name": file_name or "file"}
+                                            print(f"[Function Call] Read file content ({len(content)} chars)")
                                     else:
                                         output_data = {"error": "File not found. Please specify the exact file name."}
                                         print(f"[Function Call] File not found: {file_name}")
@@ -837,6 +885,21 @@ async def proxy_handler(client_ws):
 async def main():
     port = int(os.getenv("PORT", 8765))
     host = "0.0.0.0"
+    
+    # Auto-index all memories into ChromaDB in a background thread
+    # (ChromaDB doesn't persist on Cloud Run, so we rebuild from agent_memory.json each time)
+    # Must run in background so the WebSocket server starts immediately for Cloud Run health checks
+    import threading
+    def _index_memories():
+        try:
+            from vector_memory import init_vector_memory
+            vm = init_vector_memory()
+            vm.index_all_memories()
+        except Exception as e:
+            print(f"[Startup] Vector memory indexing error (non-fatal): {e}")
+    
+    threading.Thread(target=_index_memories, daemon=True).start()
+    
     print(f"Starting Bridge on ws://{host}:{port}")
     async with websockets.serve(proxy_handler, host, port):
         await asyncio.get_running_loop().create_future()  # Run forever
